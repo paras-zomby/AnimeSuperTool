@@ -88,11 +88,7 @@ RealCUGAN::~RealCUGAN()
     delete bicubic_4x;
 }
 
-#if _WIN32
-int RealCUGAN::load(const std::wstring& parampath, const std::wstring& modelpath)
-#else
 int RealCUGAN::load(const std::string& parampath, const std::string& modelpath)
-#endif
 {
     net.opt.use_vulkan_compute = vkdev ? true : false;
     net.opt.use_fp16_packed = true;
@@ -102,43 +98,14 @@ int RealCUGAN::load(const std::string& parampath, const std::string& modelpath)
 
     net.set_vulkan_device(vkdev);
 
-#if _WIN32
-    {
-        FILE* fp = _wfopen(parampath.c_str(), L"rb");
-        if (!fp)
-        {
-            fwprintf(stderr, L"_wfopen %ls failed\n", parampath.c_str());
-        }
-
-        net.load_param(fp);
-
-        fclose(fp);
-    }
-    {
-        FILE* fp = _wfopen(modelpath.c_str(), L"rb");
-        if (!fp)
-        {
-            fwprintf(stderr, L"_wfopen %ls failed\n", modelpath.c_str());
-        }
-
-        net.load_model(fp);
-
-        fclose(fp);
-    }
-#else
     net.load_param(parampath.c_str());
     net.load_model(modelpath.c_str());
-#endif
 
     // initialize preprocess and postprocess pipeline
     if (vkdev)
     {
         std::vector<ncnn::vk_specialization_type> specializations(1);
-#if _WIN32
-        specializations[0].i = 1;
-#else
         specializations[0].i = 0;
-#endif
 
         {
             static std::vector<uint32_t> spirv;

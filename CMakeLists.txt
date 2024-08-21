@@ -6,7 +6,7 @@ project(AnimeSuperTool)
 
 
 if(NOT CMAKE_BUILD_TYPE)
-    set(CMAKE_BUILD_TYPE release CACHE STRING "Choose the type of build" FORCE)
+    set(CMAKE_BUILD_TYPE Release CACHE STRING "Choose the type of build" FORCE)
 endif()
 
 # find FFmpeg
@@ -36,14 +36,18 @@ set(CMAKE_POLICY_DEFAULT_CMP0069 NEW)
 include(CheckIPOSupported)
 check_ipo_supported(RESULT ipo_supported OUTPUT ipo_supported_output)
 if(ipo_supported)
-    set(CMAKE_INTERPROCEDURAL_OPTIMIZATION TRUE)
-    message(STATUS "IPO is supported: ${ipo_supported_output}")
+    if (CMAKE_BUILD_TYPE STREQUAL "Release")
+        set(CMAKE_INTERPROCEDURAL_OPTIMIZATION TRUE)
+        message(STATUS "IPO is supported, using LTO for release build")
+    else()
+        message(STATUS "IPO is supported, it will be used for release build")
+    endif()
 else()
     message(WARNING "IPO is not supported: ${ipo_supported_output}")
 endif()
 
 # build ncnn library
-if(NOT EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/3rdmodules/ncnn/CMakeLists.txt")
+if(NOT EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/src/3rdmodules/ncnn/CMakeLists.txt")
     message(FATAL_ERROR "The submodules were not downloaded! Please update submodules with \"git submodule update --init --recursive\" and try again.")
 endif()
 
@@ -155,7 +159,7 @@ option(WITH_LAYER_deconvolution3d "" OFF)
 option(WITH_LAYER_deconvolutiondepthwise3d "" OFF)
 option(WITH_LAYER_einsum "" OFF)
 option(WITH_LAYER_deformableconv2d "" OFF)
-add_subdirectory(${CMAKE_CURRENT_SOURCE_DIR}/3rdmodules/ncnn)
+add_subdirectory(${CMAKE_CURRENT_SOURCE_DIR}/src/3rdmodules/ncnn)
 
 macro(add_shader SHADER_SRC_DIR)
 
@@ -180,9 +184,10 @@ endmacro()
 add_shader(${CMAKE_CURRENT_SOURCE_DIR}/src/rife/shaders)
 add_shader(${CMAKE_CURRENT_SOURCE_DIR}/src/realcugan/shaders)
 
-file(GLOB_RECURSE SRC_FILES src/*.cpp src/*.h src/*.hpp src/*.c src/*.cc src/*.comp src/*.frag src/*.vert src/*.geom src/*.tesc src/*.tese src/*.glsl)
-
-add_executable(animetool src/main.cpp) #${SRC_FILES})
+add_executable(animetool src/main.cpp
+                         src/realcugan/realcugan.cpp
+                         src/threadpool/threadpool.cpp
+)
 set_property(TARGET animetool PROPERTY CXX_STANDARD 11)
 
 add_custom_target(generate-spirv DEPENDS ${SHADER_SPV_HEX_FILES})
@@ -191,8 +196,7 @@ add_dependencies(animetool generate-spirv)
 target_include_directories(animetool PRIVATE 
                             ${FFMPEG_INCLUDE_DIR} 
                             ${Vulkan_INCLUDE_DIR}
-                            ${CMAKE_CURRENT_SOURCE_DIR}/src 
-                            ${CMAKE_CURRENT_SOURCE_DIR}/3rdmodules/ncnn/src
+                            ${CMAKE_CURRENT_SOURCE_DIR}/src
                             ${CMAKE_CURRENT_BINARY_DIR}/shaders
 )
 

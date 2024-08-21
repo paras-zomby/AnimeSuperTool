@@ -6,119 +6,312 @@ extern "C"
 #include <libavcodec/avcodec.h>
 #include <libavformat/avformat.h>
 #include <libswscale/swscale.h>
+#include <libavutil/hwcontext.h>
 }
+#include "net.h"
 
 int main() {
     const char *filename = "../video.mp4"; // 视频文件路径
-    AVFormatContext *fmt_ctx = NULL;
-    AVCodecContext *codec_ctx = nullptr;
-    const AVCodec *codec = nullptr;
-    AVFrame *frame = nullptr;
+    const char *output_filename = "../output.mp4";  // 输出文件路径
+    AVFormatContext *fmt_decode_ctx = nullptr;
+    AVFormatContext *fmt_encoder_ctx = nullptr;
+    AVCodecContext *decoder_codec_ctx = nullptr;
+    const AVCodec *decoder_codec = nullptr;
+    AVStream **new_streams = nullptr;
+    int *streams_mapping = nullptr;
+    AVFrame *input_frame = nullptr;
+    AVFrame *output_frame = nullptr;
+    AVPacket* inpkt;
+    AVPacket* outpkt;    
 
     // 打开输入文件
-    if (avformat_open_input(&fmt_ctx, filename, NULL, NULL) < 0)
+    if (avformat_open_input(&fmt_decode_ctx, filename, NULL, NULL) < 0)
     {
         av_log(NULL, AV_LOG_ERROR, "无法打开文件 %s\n", filename);
         return -1;
     }
+    // 打开输出文件
+    avformat_alloc_output_context2(&fmt_encoder_ctx, nullptr, nullptr, output_filename);
+    if (!fmt_encoder_ctx)
+    {
+        fprintf(stderr, "Could not create output context\n");
+        return -1;
+    }
 
     // 读取流信息
-    if (avformat_find_stream_info(fmt_ctx, NULL) < 0)
+    if (avformat_find_stream_info(fmt_decode_ctx, NULL) < 0)
     {
         av_log(NULL, AV_LOG_ERROR, "无法获取流信息\n");
-        avformat_close_input(&fmt_ctx);
+        avformat_close_input(&fmt_decode_ctx);
         return -1;
     }
-
     // 打印格式信息
-    av_dump_format(fmt_ctx, 0, filename, 0);
+    av_dump_format(fmt_decode_ctx, 0, filename, 0);
 
-    // 查找视频流
-    int video_stream_index = av_find_best_stream(fmt_ctx, AVMEDIA_TYPE_VIDEO, -1, -1, NULL, 0);
-    if (video_stream_index < 0)
+    // 查找视频流与解码器
+    int input_video_stream_index = av_find_best_stream(
+        fmt_decode_ctx,
+        AVMEDIA_TYPE_VIDEO,
+        -1, -1, &decoder_codec, 0);
+    if (input_video_stream_index < 0)
     {
         av_log(NULL, AV_LOG_ERROR, "没有找到视频流\n");
-        avformat_close_input(&fmt_ctx);
+        avformat_close_input(&fmt_decode_ctx);
         return -1;
     }
-    AVCodecParameters *codecpar = fmt_ctx->streams[video_stream_index]->codecpar;
-
-    // 查找解码器
-    codec = avcodec_find_decoder(codecpar->codec_id);
-    if (!codec)
+    if (!decoder_codec)
     {
         av_log(NULL, AV_LOG_ERROR, "找不到解码器\n");
-        avformat_close_input(&fmt_ctx);
+        avformat_close_input(&fmt_decode_ctx);
+        return -1;
+    }
+
+    // 查找其他流
+    new_streams = (AVStream **)av_malloc_array(fmt_decode_ctx->nb_streams, sizeof(AVStream *));
+    streams_mapping = (int *)av_malloc_array(fmt_decode_ctx->nb_streams, sizeof(int));
+    for (size_t i = 0; i < fmt_decode_ctx->nb_streams; i++)
+    {
+        if (i == input_video_stream_index)
+            continue;
+        AVStream *stream = avformat_new_stream(fmt_encoder_ctx, nullptr);
+        avcodec_parameters_copy(stream->codecpar, fmt_decode_ctx->streams[i]->codecpar);
+        if (!stream)
+        {
+            fprintf(stderr, "Failed to allocate stream\n");
+            return -1;
+        }
+        new_streams[i] = stream;
+        streams_mapping[i] = stream->index;
+    }
+
+    // 查找编码器
+    // const AVCodec *encoder_codec = avcodec_find_encoder(AV_CODEC_ID_H265);
+    const AVCodec *encoder_codec = avcodec_find_encoder_by_name("hevc_amf");
+    if (!encoder_codec)
+    {
+        fprintf(stderr, "Codec not found\n");
         return -1;
     }
 
     // 初始化解码器上下文
-    codec_ctx = avcodec_alloc_context3(codec);
-    if (!codec_ctx)
+    decoder_codec_ctx = avcodec_alloc_context3(decoder_codec);
+    if (!decoder_codec_ctx)
     {
         fprintf(stderr, "Failed to allocate codec context\n");
         return -1;
     }
-
-    if (avcodec_parameters_to_context(codec_ctx, codecpar) < 0)
+    AVCodecParameters *codecpar = fmt_decode_ctx->streams[input_video_stream_index]->codecpar;
+    // 将解码器参数拷贝到解码器上下文
+    if (avcodec_parameters_to_context(decoder_codec_ctx, codecpar) < 0)
     {
         fprintf(stderr, "Failed to copy codec parameters to decoder context\n");
         return -1;
     }
 
-    if (avcodec_open2(codec_ctx, codec, nullptr) < 0)
+    // 初始化编码器上下文
+    AVCodecContext *encoder_codec_ctx = avcodec_alloc_context3(encoder_codec);
+    if (!encoder_codec_ctx)
     {
-        fprintf(stderr, "Failed to open codec\n");
+        fprintf(stderr, "Could not allocate video codec context\n");
+        return -1;
+    }
+    // 设置编码器参数
+    encoder_codec_ctx->time_base = fmt_decode_ctx->streams[input_video_stream_index]->time_base;
+    encoder_codec_ctx->bit_rate = decoder_codec_ctx->bit_rate;
+    encoder_codec_ctx->width = decoder_codec_ctx->width;
+    encoder_codec_ctx->height = decoder_codec_ctx->height;
+    encoder_codec_ctx->framerate = decoder_codec_ctx->framerate;
+    encoder_codec_ctx->pix_fmt = decoder_codec_ctx->pix_fmt;
+
+    if (avcodec_open2(decoder_codec_ctx, decoder_codec, nullptr) < 0)
+    {
+        fprintf(stderr, "Failed to open decodec\n");
+        return -1;
+    }
+
+    if (avcodec_open2(encoder_codec_ctx, encoder_codec, nullptr) < 0)
+    {
+        fprintf(stderr, "Failed to open encodec\n");
+        return -1;
+    }
+
+    // 添加视频流
+    AVStream* output_video_stream = avformat_new_stream(fmt_encoder_ctx, encoder_codec);
+    if (!output_video_stream)
+    {
+        fprintf(stderr, "Could not create video stream\n");
+        return -1;
+    }
+    output_video_stream->time_base = encoder_codec_ctx->time_base;
+    if (avcodec_parameters_from_context(output_video_stream->codecpar, encoder_codec_ctx) < 0)
+    {
+        fprintf(stderr, "Failed to copy codec parameters to output stream\n");
+        return -1;
+    }
+    // 打开输出文件
+    if (!(fmt_encoder_ctx->oformat->flags & AVFMT_NOFILE))
+    {
+        if (avio_open(&fmt_encoder_ctx->pb, output_filename, AVIO_FLAG_WRITE) < 0)
+        {
+            fprintf(stderr, "Could not open output file '%s'\n", output_filename);
+            return -1;
+        }
+    }
+
+    // 写文件头
+    if (avformat_write_header(fmt_encoder_ctx, nullptr) < 0)
+    {
+        fprintf(stderr, "Error occurred when opening output file\n");
         return -1;
     }
 
     // 读取视频帧
-    AVPacket pkt;
-    while (av_read_frame(fmt_ctx, &pkt) >= 0)
+    struct SwsContext *sws_before_ctx = sws_getContext(decoder_codec_ctx->width, decoder_codec_ctx->height,
+                                                       AV_PIX_FMT_YUV420P,
+                                                       decoder_codec_ctx->width, decoder_codec_ctx->height,
+                                                       AV_PIX_FMT_RGB24,
+                                                       SWS_BILINEAR, NULL, NULL, NULL);
+    struct SwsContext *sws_after_ctx = sws_getContext(encoder_codec_ctx->width, encoder_codec_ctx->height,
+                                                      AV_PIX_FMT_RGB24,
+                                                      encoder_codec_ctx->width, encoder_codec_ctx->height, 
+                                                      AV_PIX_FMT_YUV420P,
+                                                      SWS_BILINEAR, NULL, NULL, NULL);
+
+    if (!sws_before_ctx || !sws_after_ctx)
     {
-        if (pkt.stream_index == video_stream_index)
+        fprintf(stderr, "Could not initialize the conversion context\n");
+        return -1;
+    }
+
+    input_frame = av_frame_alloc();
+    output_frame = av_frame_alloc();
+    if (!output_frame || !input_frame)
+    {
+        fprintf(stderr, "Could not allocate video frame\n");
+        return -1;
+    }
+
+    input_frame->format = decoder_codec_ctx->pix_fmt;
+    input_frame->width = decoder_codec_ctx->width;
+    input_frame->height = decoder_codec_ctx->height;
+
+    output_frame->format = encoder_codec_ctx->pix_fmt;
+    output_frame->width = encoder_codec_ctx->width;
+    output_frame->height = encoder_codec_ctx->height;
+
+    if (av_frame_get_buffer(input_frame, 32) < 0)
+    {
+        fprintf(stderr, "Could not allocate the video frame data\n");
+        return -1;
+    }
+    if (av_frame_get_buffer(output_frame, 32) < 0)
+    {
+        fprintf(stderr, "Could not allocate the video frame data\n");
+        return -1;
+    }
+
+    inpkt = av_packet_alloc();
+    outpkt = av_packet_alloc();
+    if (!inpkt || !outpkt)
+    {
+        fprintf(stderr, "Could not allocate the video packet\n");
+        return -1;
+    }
+
+    fprintf(stderr, "start copy frame\n");
+    while (av_read_frame(fmt_decode_ctx, inpkt) >= 0)
+    {
+        if (inpkt->stream_index == input_video_stream_index)
         {
             // 处理视频帧
-            // printf("read a frame, size is %d\n", pkt.size);
-            if (avcodec_send_packet(codec_ctx, &pkt) >= 0)
+            if (avcodec_send_packet(decoder_codec_ctx, inpkt) == 0)
             {
-                while (avcodec_receive_frame(codec_ctx, frame) >= 0)
+                // send 和 receive 不是一一对应，可能会发送多帧才能recieve一帧，
+                // 也可能发送一帧就能接收多帧，所以必须循环接收
+                while (avcodec_receive_frame(decoder_codec_ctx, input_frame) == 0)
                 {
                     // 将帧保存为图片
+                    ncnn::Mat img(input_frame->width, input_frame->height, 3, (size_t)1);  // RGB24 elemsize=3u, elempack=3
+                    uint8_t *indata[1] = {(uint8_t *)img.data};
+                    int inlinesize = img.w * 3;
+                    sws_scale(sws_before_ctx, input_frame->data, input_frame->linesize, 0, 
+                                input_frame->height, indata, &inlinesize);
+                    // // 处理图片
+                    // // process(img);
 
-                }
+                    ncnn::Mat predimg = img.clone();
+
+                    // // 将图片保存为帧
+                    // TODO: PROCESS NOT GOOD
+                    uint8_t *outdata[1] = {(uint8_t *)predimg.data};
+                    int line_size = predimg.w * 3;
+                    sws_scale(sws_after_ctx, outdata, &line_size, 0, predimg.h, output_frame->data, output_frame->linesize);
+                    // av_frame_copy(output_frame, input_frame);
+
+                    output_frame->pts = input_frame->pts;
+                    output_frame->duration = input_frame->duration;
+
+                    // 编码帧
+                    if (avcodec_send_frame(encoder_codec_ctx, output_frame) < 0)
+                    {
+                        fprintf(stderr, "Error sending a frame for encoding\n");
+                        return -1;
+                    }
+                    while (avcodec_receive_packet(encoder_codec_ctx, outpkt) >= 0)
+                    {
+                        fprintf(stderr, "Write frame %3d (size=%5d)\n", fmt_encoder_ctx->streams[0]->nb_frames, outpkt->size);
+                        outpkt->stream_index = output_video_stream->index;
+                        if (av_interleaved_write_frame(fmt_encoder_ctx, outpkt) < 0)
+                        {
+                            fprintf(stderr, "Error while writing output packet\n");
+                            return -1;
+                        }
+                    }
+                }              
+            }
+            else
+            {
+                fprintf(stderr, "Error sending a packet to the decoder\n");
+                return -1;
+            }
+                        
+        }
+        else
+        {
+            inpkt->stream_index = streams_mapping[inpkt->stream_index];
+            if (av_interleaved_write_frame(fmt_encoder_ctx, inpkt) < 0)
+            {
+                fprintf(stderr, "Error while writing output packet\n");
+                return -1;
             }
         }
-        av_packet_unref(&pkt); // 释放packet
+        
+        av_packet_unref(inpkt); // decoder not free the packet before use it
+    }
+
+    // 写文件尾
+    if (av_write_trailer(fmt_encoder_ctx) < 0)
+    {
+        fprintf(stderr, "Error occurred when writing trailer\n");
+        return -1;
     }
 
     // 释放资源
-    avformat_close_input(&fmt_ctx);
+    sws_freeContext(sws_before_ctx);
+    sws_freeContext(sws_after_ctx);
+    av_frame_free(&input_frame);
+    av_frame_free(&output_frame);
+    av_packet_free(&inpkt);
+    av_packet_free(&outpkt);
+    avcodec_free_context(&decoder_codec_ctx);
+    avcodec_free_context(&encoder_codec_ctx);
+    avformat_close_input(&fmt_encoder_ctx);
+    if (!(fmt_encoder_ctx->oformat->flags & AVFMT_NOFILE))
+    {
+        avio_closep(&fmt_encoder_ctx->pb);
+    }
+    avformat_free_context(fmt_encoder_ctx);
+    av_free(new_streams);
+    av_free(streams_mapping);
     return 0;
-}
-
-void save_frame_as_image(AVFrame *pFrame, int width, int height, int iFrame)
-{
-    // 创建一个 OpenCV Mat 对象
-    cv::Mat img(height, width, CV_8UC3);
-
-    // 将 YUV420P 格式的 AVFrame 转换为 RGB 格式
-    struct SwsContext *sws_ctx = sws_getContext(width, height, AV_PIX_FMT_YUV420P,
-                                                width, height, AV_PIX_FMT_BGR24,
-                                                SWS_BILINEAR, NULL, NULL, NULL);
-
-    uint8_t *data[1] = {img.data};
-    int linesize[1] = {static_cast<int>(img.step[0])};
-
-    sws_scale(sws_ctx, pFrame->data, pFrame->linesize, 0, height, data, linesize);
-
-    // 生成文件名
-    char filename[32];
-    snprintf(filename, sizeof(filename), "frame%d.jpg", iFrame);
-
-    // 保存图片
-    cv::imwrite(filename, img);
-
-    // 释放 SwsContext
-    sws_freeContext(sws_ctx);
 }
