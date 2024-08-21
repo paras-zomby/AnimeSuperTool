@@ -6,3 +6,5 @@ build/
 
 # 3rd modules
 3rdmodules/
+
+*.mp4
