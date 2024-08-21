@@ -6,10 +6,9 @@ extern "C"
 #include <libavcodec/avcodec.h>
 #include <libavformat/avformat.h>
 #include <libswscale/swscale.h>
-#include <libavutil/opt.h>
+#include <libavutil/hwcontext.h>
 }
 #include "net.h"
-#include "progresscpp/progressbar.hpp"
 
 int main() {
     const char *filename = "../video.mp4"; // 视频文件路径
@@ -219,8 +218,7 @@ int main() {
         return -1;
     }
 
-    progresscpp::ProgressBar progressBar("processing video:", fmt_decode_ctx->streams[input_video_stream_index]->nb_frames, 70);
-
+    fprintf(stderr, "start copy frame\n");
     while (av_read_frame(fmt_decode_ctx, inpkt) >= 0)
     {
         if (inpkt->stream_index == input_video_stream_index)
@@ -244,9 +242,11 @@ int main() {
                     ncnn::Mat predimg = img.clone();
 
                     // // 将图片保存为帧
+                    // TODO: PROCESS NOT GOOD
                     uint8_t *outdata[1] = {(uint8_t *)predimg.data};
                     int line_size = predimg.w * 3;
                     sws_scale(sws_after_ctx, outdata, &line_size, 0, predimg.h, output_frame->data, output_frame->linesize);
+                    // av_frame_copy(output_frame, input_frame);
 
                     output_frame->pts = input_frame->pts;
                     output_frame->duration = input_frame->duration;
@@ -259,7 +259,7 @@ int main() {
                     }
                     while (avcodec_receive_packet(encoder_codec_ctx, outpkt) >= 0)
                     {
-                        ++progressBar;
+                        fprintf(stderr, "Write frame %3d (size=%5d)\n", fmt_encoder_ctx->streams[0]->nb_frames, outpkt->size);
                         outpkt->stream_index = output_video_stream->index;
                         if (av_interleaved_write_frame(fmt_encoder_ctx, outpkt) < 0)
                         {
@@ -285,7 +285,7 @@ int main() {
                 return -1;
             }
         }
-        progressBar.display();
+        
         av_packet_unref(inpkt); // decoder not free the packet before use it
     }
 
@@ -295,7 +295,6 @@ int main() {
         fprintf(stderr, "Error occurred when writing trailer\n");
         return -1;
     }
-    progressBar.done();
 
     // 释放资源
     sws_freeContext(sws_before_ctx);
