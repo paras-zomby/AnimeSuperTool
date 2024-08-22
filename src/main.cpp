@@ -258,7 +258,8 @@ int main() {
                     {
                         ++progressBar;
                         outpkt->stream_index = output_video_stream->index;
-                        av_packet_rescale_ts(outpkt, decoder_codec_ctx->time_base, output_video_stream->time_base);
+                        av_packet_rescale_ts(outpkt, ifmt_ctx->streams[input_video_stream_index]->time_base,
+                                             output_video_stream->time_base);
                         if (av_interleaved_write_frame(ofmt_ctx, outpkt) < 0)
                         {
                             fprintf(stderr, "Error while writing output packet\n");
