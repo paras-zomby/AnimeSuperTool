@@ -197,7 +197,6 @@ target_include_directories(animetool PRIVATE
                             ${FFMPEG_INCLUDE_DIR} 
                             ${Vulkan_INCLUDE_DIR}
                             ${CMAKE_CURRENT_SOURCE_DIR}/src
-                            ${CMAKE_CURRENT_SOURCE_DIR}/src/3rdmodules
                             ${CMAKE_CURRENT_BINARY_DIR}/shaders
 )
 
