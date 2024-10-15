@@ -1,0 +1,7 @@
+# temporary references
+reference/
+
+# build output
+build/
+
+*.mp4
