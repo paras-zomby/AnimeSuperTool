@@ -31,7 +31,7 @@ public:
 private:
     AVFormatContext *ifmt_ctx = nullptr;
     AVCodecContext *codec_ctx = nullptr;
-    const AVCodec *codec = nullptr;
+    AVCodec *codec = nullptr;
     AVFrame *inframe = nullptr;
     struct SwsContext *sws_ctx = nullptr;
     int video_stream_index = -1;

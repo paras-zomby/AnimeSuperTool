@@ -139,6 +139,7 @@ bool VideoReader::read_frame(Frame &frame)
     frame.frame_timestamp.duration = inframe->pkt_duration;
 #else
     frame.frame_timestamp.duration = inframe->duration;
+#endif
     frame.stream_index = video_stream_index;
 
     frame.pkt_timestamp.pts = frame.pkt->pts;
@@ -155,8 +156,6 @@ bool VideoReader::read_frame(Frame &frame)
 
 void VideoReader::close_video()
 {
-    if (metadata)
-        av_dict_free(&metadata);
     if (inframe)
         av_frame_free(&inframe);
     if (sws_ctx)
