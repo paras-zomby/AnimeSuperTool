@@ -9,10 +9,18 @@ if(NOT CMAKE_BUILD_TYPE)
     set(CMAKE_BUILD_TYPE Release CACHE STRING "Choose the type of build" FORCE)
 endif()
 
+cmake_host_system_information(RESULT OS QUERY OS_NAME)
+
+
 # find FFmpeg
-set(FFMPEG_ROOT "C:/Libs/ffmpeg")
-set(FFMPEG_INCLUDE_DIR "${FFMPEG_ROOT}/include")
-set(FFMPEG_LIBRARIES_DIR "${FFMPEG_ROOT}/lib")
+if(${OS} MATCHES "Windows")
+    set(FFMPEG_ROOT "C:/Libs/ffmpeg")
+    set(FFMPEG_INCLUDE_DIR "${FFMPEG_ROOT}/include")
+    set(FFMPEG_LIBRARIES_DIR "${FFMPEG_ROOT}/lib")
+elseif(${OS} MATCHES "Linux")
+    set(FFMPEG_LIBRARIES_DIR "/usr/lib/x86_64-linux-gnu")
+    set(FFMPEG_INCLUDE_DIR "/usr/include/x86_64-linux-gnu")
+endif()
 if(NOT EXISTS "${FFMPEG_INCLUDE_DIR}/libavcodec/avcodec.h")
     message(FATAL_ERROR "FFmpeg not found! Please download FFmpeg from https://ffmpeg.org/download.html and set FFMPEG_ROOT to the FFmpeg installation directory.")
 endif()
@@ -21,8 +29,17 @@ set(FFMPEG_LIBRARIES avcodec avdevice avfilter avformat avutil postproc swresamp
 find_package(Threads)
 find_package(OpenMP)
 
-set(ENV{VULKAN_SDK} "C:/Libs/vulkan")
+# find vulkan
+if(${OS} MATCHES "Windows")
+    set(ENV{VULKAN_SDK} "C:/Libs/vulkan")
+endif()
 find_package(Vulkan REQUIRED)
+
+# find boost
+if(${OS} MATCHES "Windows")
+    set(Boost_DIR "C:/Libs/Boost")
+endif()
+find_package(Boost REQUIRED COMPONENTS filesystem)
 
 if(OPENMP_FOUND)
     set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} ${OpenMP_C_FLAGS}")
@@ -200,10 +217,11 @@ add_dependencies(animetool generate-spirv)
 target_include_directories(animetool PRIVATE 
                             ${FFMPEG_INCLUDE_DIR} 
                             ${Vulkan_INCLUDE_DIR}
+                            ${Boost_INCLUDE_DIRS}
                             ${CMAKE_CURRENT_SOURCE_DIR}/src
                             ${CMAKE_CURRENT_BINARY_DIR}/shaders
 )
 
 target_link_directories(animetool PRIVATE ${FFMPEG_LIBRARIES_DIR})
 
-target_link_libraries(animetool ncnn ${Vulkan_LIBRARY} ${FFMPEG_LIBRARIES})
+target_link_libraries(animetool ncnn ${Vulkan_LIBRARY} ${FFMPEG_LIBRARIES} ${Boost_LIBRARIES})

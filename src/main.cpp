@@ -7,25 +7,10 @@
 #include "rife/rife.h"
 #include "ifrnet/ifrnet.h"
 #include "realcugan/realcugan.h"
+#include "boost/filesystem.hpp"
 
-
-
-int main() {
-    // input output file path
-    const char *filename = "../video_small.mp4"; // 视频文件路径
-    const char *output_filename = "../output_small.mp4";  // 输出文件路径
-    // configs
-    Params param;
-    param.zoom_scale = 2;
-    param.frame_ratio_scale = 1;
-    param.denoise = false;
-    param.num_threads_pergpu = 1;
-    param.tile_num = 2;
-    param.gpu = 0;
-    param.ifrnet_type = 2;
-    param.imagezoom_bitrate_scale = 0.7;
-    param.framerate_bitrate_scale = 0.5;
-
+bool workflow(const Params &param, const std::string& filename, const std::string& output_filename)
+{
     VideoReader videoReader;
     VideoWriter videoWriter;
 
@@ -109,5 +94,56 @@ int main() {
     buffer.head().img = out;
     videoWriter.write_frame(buffer.head());
     progressBar.done();
+    return true;
+}
+
+int main() {
+
+    // configs
+    Params param;
+    param.zoom_scale = 2;
+    param.frame_ratio_scale = 3;
+    param.denoise = false;
+    param.num_threads_pergpu = 2;
+    param.tile_num = 1;
+    param.gpu = 1;
+    param.ifrnet_type = 2;
+    param.imagezoom_bitrate_scale = 0.7;
+    param.framerate_bitrate_scale = 0.5;
+
+    std::stringstream discription;
+    discription << "[AST:" << param.zoom_scale << "x" << param.frame_ratio_scale << "x]";
+
+    boost::filesystem::path video_path("../video_small.mp4");
+    if (!boost::filesystem::exists(video_path))
+    {
+        fprintf(stderr, "Video file not exist: %s\n", video_path.c_str());
+        return -1;
+    }
+    if (boost::filesystem::is_directory(video_path))
+    {
+        for (boost::filesystem::directory_entry& x : boost::filesystem::directory_iterator(video_path))
+        {
+            std::string filename = x.path().string();
+            std::string output_filename = x.path().string();
+            output_filename.insert(output_filename.rfind("."), discription.str());
+            if (!workflow(param, filename, output_filename))
+            {
+                fprintf(stderr, "Failed to process video file: %s\n", filename.c_str());
+                return -1;
+            }
+        }
+    }
+    else
+    {
+        std::string filename = video_path.string();
+        std::string output_filename = video_path.string();
+        output_filename.insert(output_filename.rfind("."), discription.str());
+        if (!workflow(param, filename, output_filename))
+        {
+            fprintf(stderr, "Failed to process video file: %s\n", filename.c_str());
+            return -1;
+        }
+    }
     return 0;
 }
