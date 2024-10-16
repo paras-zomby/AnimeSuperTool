@@ -41,6 +41,7 @@ namespace progresscpp
 
             auto time_eta = int(time_elapsed / progress) - time_elapsed;
             time_eta /= 1000.0;
+            time_elapsed /= 1000.0;
 
             std::cout << message << " [";
 
@@ -49,20 +50,30 @@ namespace progresscpp
             std::cout << ">";
             for (int i = pos + 1; i < bar_width; ++i)
                 std::cout << incomplete_char;
+
+            int elapsed_mins = time_elapsed / 60;
+            time_elapsed -= elapsed_mins * 60;
+            int elapsed_hours = elapsed_mins / 60;
+            elapsed_mins -= elapsed_hours * 60;
+            int elapsed_days = elapsed_hours / 24;
+            elapsed_hours -= elapsed_days * 24;
             
-            int time_mins = time_eta / 60;
-            time_eta -= time_mins * 60;
-            int time_hours = time_mins / 60;
-            time_mins -= time_hours * 60;
-            int time_days = time_hours / 24;
-            time_hours -= time_days * 24;
+            int eta_mins = time_eta / 60;
+            time_eta -= eta_mins * 60;
+            int eta_hours = eta_mins / 60;
+            eta_mins -= eta_hours * 60;
+            int eta_days = eta_hours / 24;
+            eta_hours -= eta_days * 24;
 
             std::cout << "] " << int(progress * 100.0) << "% "
-                      << float(time_elapsed) / 1000.0 << "s | ETA: "
-                      << (time_days > 0 ? std::to_string(time_days) + "d" : "")
-                      << (time_hours > 0 ? std::to_string(time_hours) + "h" : "")
-                      << (time_mins > 0 ? std::to_string(time_mins) + "m" : "")
-                      << float(time_eta) << "s      \r";
+                      << (elapsed_days > 0 ? std::to_string(elapsed_days) + "d" : "")
+                      << (elapsed_hours > 0 ? std::to_string(elapsed_hours) + "h" : "")
+                      << (elapsed_mins > 0 ? std::to_string(elapsed_mins) + "m" : "")
+                      << time_elapsed << "s | ETA: "
+                      << (eta_days > 0 ? std::to_string(eta_days) + "d" : "")
+                      << (eta_hours > 0 ? std::to_string(eta_hours) + "h" : "")
+                      << (eta_mins > 0 ? std::to_string(eta_mins) + "m" : "")
+                      << time_eta << "s      \r";
             std::cout.flush();
         }
 
