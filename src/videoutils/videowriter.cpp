@@ -34,8 +34,12 @@ bool VideoWriter::open_video_file(const std::string &filename)
     }
 
     // 查找编码器
-    // const AVCodec *encoder_codec = avcodec_find_encoder(AV_CODEC_ID_H265);
-    codec = avcodec_find_encoder_by_name("hevc_amf");
+    for (size_t i = 0; i < encoderlist.size(); ++i)
+    {
+        codec = avcodec_find_encoder_by_name(encoderlist[i]);
+        if (codec)
+            break;
+    }
     
     if (!codec)
     {
@@ -119,6 +123,8 @@ bool VideoWriter::set_params(const VideoReader &reader, const Params& params)
     codec_ctx->framerate = framerate;
 #endif
 
+    if (strcmp(codec->name, "hevc_amf") == 0)
+    {
     if (av_dict_set(&opts, "rc", "vbr_peak", 0) < 0)
     {
         error_string << "Failed to set codec options" << std::endl;
@@ -140,6 +146,43 @@ bool VideoWriter::set_params(const VideoReader &reader, const Params& params)
         reset_params();
         return false;
     }
+    }
+    else if (strcmp(codec->name, "hevc_nvenc") == 0)
+    {
+        if (av_dict_set(&opts, "rc", "vbr", 0) < 0)
+        {
+            error_string << "Failed to set codec options" << std::endl;
+            av_dict_free(&opts);
+            reset_params();
+            return false;
+        }
+        if (av_dict_set_int(&opts, "maxrate", 5 * codec_ctx->bit_rate, 0) < 0)
+        {
+            error_string << "Failed to set codec options" << std::endl;
+            av_dict_free(&opts);
+            reset_params();
+            return false;
+        }
+        if (av_dict_set_int(&opts, "bitrate", codec_ctx->bit_rate, 0) < 0)
+        {
+            error_string << "Failed to set codec options" << std::endl;
+            av_dict_free(&opts);
+            reset_params();
+            return false;
+        }
+    }
+    else 
+    {
+        fprintf(stderr, "Warning: unknown encoder: %s, using default config.\n", codec->name);
+    }
+
+    if (avcodec_open2(codec_ctx, codec, &opts) < 0)
+    {
+        error_string << "Failed to open codec" << std::endl;
+        reset_params();
+        return false;
+    }
+    av_dict_free(&opts);
 
     new_streams = (AVStream **)av_malloc_array(reader.get_stream_nb(), sizeof(AVStream *));
     streams_mapping = (int *)av_malloc_array(reader.get_stream_nb(), sizeof(int));
@@ -179,13 +222,6 @@ bool VideoWriter::set_params(const VideoReader &reader, const Params& params)
 
     av_dump_format(ofmt_ctx, 0, output_filename.c_str(), 1);
 
-    if (avcodec_open2(codec_ctx, codec, &opts) < 0)
-    {
-        error_string << "Failed to open codec" << std::endl;
-        reset_params();
-        return false;
-    }
-    av_dict_free(&opts);
     is_set_params = true;
     return true;
 }

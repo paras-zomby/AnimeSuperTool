@@ -1,6 +1,7 @@
 #ifndef COMMON_H
 #define COMMON_H
 
+#include <array>
 #include "net.h"
 #include "utils/cyclebuffer.hpp"
 extern "C"
@@ -9,6 +10,8 @@ extern "C"
 #include <libavformat/avformat.h>
 #include <libswscale/swscale.h>
 }
+
+constexpr std::array<char[15], 4> encoderlist = {"hevc_amf", "hevc_nvenc", "hevc_qsv", "libx265"};
 
 enum class FrameType : int
 {
