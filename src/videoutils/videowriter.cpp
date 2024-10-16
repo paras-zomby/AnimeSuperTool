@@ -125,27 +125,27 @@ bool VideoWriter::set_params(const VideoReader &reader, const Params& params)
 
     if (strcmp(codec->name, "hevc_amf") == 0)
     {
-    if (av_dict_set(&opts, "rc", "vbr_peak", 0) < 0)
-    {
-        error_string << "Failed to set codec options" << std::endl;
-        av_dict_free(&opts);
-        reset_params();
-        return false;
-    }
-    if (av_dict_set_int(&opts, "maxrate", 5 * codec_ctx->bit_rate, 0) < 0)
-    {
-        error_string << "Failed to set codec options" << std::endl;
-        av_dict_free(&opts);
-        reset_params();
-        return false;
-    }
-    if (av_dict_set(&opts, "quality", "quality", 0) < 0)
-    {
-        error_string << "Failed to set codec options" << std::endl;
-        av_dict_free(&opts);
-        reset_params();
-        return false;
-    }
+        if (av_dict_set(&opts, "rc", "vbr_peak", 0) < 0)
+        {
+            error_string << "Failed to set codec options" << std::endl;
+            av_dict_free(&opts);
+            reset_params();
+            return false;
+        }
+        if (av_dict_set_int(&opts, "maxrate", 5 * codec_ctx->bit_rate, 0) < 0)
+        {
+            error_string << "Failed to set codec options" << std::endl;
+            av_dict_free(&opts);
+            reset_params();
+            return false;
+        }
+        if (av_dict_set(&opts, "quality", "quality", 0) < 0)
+        {
+            error_string << "Failed to set codec options" << std::endl;
+            av_dict_free(&opts);
+            reset_params();
+            return false;
+        }
     }
     else if (strcmp(codec->name, "hevc_nvenc") == 0)
     {
