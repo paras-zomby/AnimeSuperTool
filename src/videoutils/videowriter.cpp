@@ -48,6 +48,8 @@ bool VideoWriter::open_video_file(const std::string &filename)
         return false;
     }
 
+    fprintf(stderr, "Using encoder: %s\n", codec->name);
+
     // 初始化编码器上下文
     codec_ctx = avcodec_alloc_context3(codec);
     if (!codec_ctx)
