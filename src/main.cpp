@@ -14,8 +14,10 @@ bool workflow(const Params &param, const std::string& filename, const std::strin
     VideoReader videoReader;
     VideoWriter videoWriter;
 
-    IFRNet ifrnet(param.gpu, "../models", param.zoom_scale, false, 
-                    param.num_threads_pergpu, param.ifrnet_type, false);
+    // IFRNet ifrnet(param.gpu, "../models", param.frame_ratio_scale, false, 
+    //                 param.num_threads_pergpu, param.ifrnet_type, false);
+    RIFE rife(param.gpu, "../models/rife-v4.6", param.frame_ratio_scale, false, false, false, 
+                    param.num_threads_pergpu, false, true);
     RealCUGAN realcugan(param.gpu, "../models/realcugan-pro", param.tile_num, 
                         param.zoom_scale, param.num_threads_pergpu, 
                         param.denoise, 0, false);
