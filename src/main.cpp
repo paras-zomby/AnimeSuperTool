@@ -61,7 +61,7 @@ bool workflow(const Params &param, const std::string& filename, const std::strin
             }
             // Frame Interpolation
             for (size_t i = 1; i < param.frame_ratio_scale; ++i)
-                ifrnet.process(buffer.head().img, buffer.tail().img, i * 1.0 / param.frame_ratio_scale, buffer[i].img);
+                rife.process(buffer.head().img, buffer.tail().img, i * 1.0 / param.frame_ratio_scale, buffer[i].img);
             fix_timestamp(buffer, param.frame_ratio_scale);
             // Frame Upscaling and write to video
             for (size_t i = 0; i < param.frame_ratio_scale; ++i)
@@ -107,14 +107,14 @@ int main() {
     param.frame_ratio_scale = 3;
     param.denoise = false;
     param.num_threads_pergpu = 2;
-    param.tile_num = 1;
-    param.gpu = 1;
+    param.tile_num = 2;
+    param.gpu = 0;
     param.ifrnet_type = 2;
     param.imagezoom_bitrate_scale = 0.7;
     param.framerate_bitrate_scale = 0.5;
 
     std::stringstream discription;
-    discription << "[AST:" << param.zoom_scale << "x" << param.frame_ratio_scale << "x]";
+    discription << "[AST " << param.zoom_scale << "x@" << param.frame_ratio_scale << "x]";
 
     boost::filesystem::path video_path("../video_small.mp4");
     if (!boost::filesystem::exists(video_path))
@@ -128,7 +128,7 @@ int main() {
         {
             std::string filename = x.path().string();
             std::string output_filename = x.path().string();
-            output_filename.insert(output_filename.rfind("."), discription.str());
+            output_filename.insert(output_filename.rfind("/") + 1, discription.str());
             if (!workflow(param, filename, output_filename))
             {
                 fprintf(stderr, "Failed to process video file: %s\n", filename.c_str());
@@ -140,7 +140,7 @@ int main() {
     {
         std::string filename = video_path.string();
         std::string output_filename = video_path.string();
-        output_filename.insert(output_filename.rfind("."), discription.str());
+        output_filename.insert(output_filename.rfind("/") + 1, discription.str());
         if (!workflow(param, filename, output_filename))
         {
             fprintf(stderr, "Failed to process video file: %s\n", filename.c_str());
