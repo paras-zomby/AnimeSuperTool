@@ -3,7 +3,7 @@
 
 #include "common.h"
 #include "utils/config.h"
-#include "VideoReader.h"
+#include "videoreader.h"
 
 #include <string>
 #include <sstream>

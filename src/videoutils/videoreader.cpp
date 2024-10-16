@@ -152,13 +152,15 @@ bool VideoReader::read_frame(Frame &frame)
 
 void VideoReader::close_video()
 {
-    if (!inframe)
+    if (metadata)
+        av_dict_free(&metadata);
+    if (inframe)
         av_frame_free(&inframe);
-    if (!sws_ctx)
+    if (sws_ctx)
         sws_freeContext(sws_ctx);
-    if (!codec_ctx)
+    if (codec_ctx)
         avcodec_free_context(&codec_ctx);
-    if (!ifmt_ctx)
+    if (ifmt_ctx)
         avformat_close_input(&ifmt_ctx);
     video_stream_index = -1;
     is_opened_ = false;
