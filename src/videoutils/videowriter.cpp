@@ -219,6 +219,7 @@ bool VideoWriter::set_params(const VideoReader &reader, const Params& params)
         new_streams[i] = stream;
         streams_mapping[i] = stream->index;
     }
+    av_dict_copy(&ofmt_ctx->metadata, reader.get_video_stream()->metadata, 0);  // copy metadata from reader to writer
 
     av_dump_format(ofmt_ctx, 0, output_filename.c_str(), 1);
 
