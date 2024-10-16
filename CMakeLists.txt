@@ -1,5 +1,7 @@
 cmake_policy(SET CMP0091 NEW)
+cmake_policy(SET CMP0167 NEW)
 set(CMAKE_POLICY_DEFAULT_CMP0091 NEW)
+set(CMAKE_POLICY_DEFAULT_CMP0167 NEW)
 cmake_minimum_required(VERSION 3.9)
 
 project(AnimeSuperTool)
@@ -37,7 +39,7 @@ find_package(Vulkan REQUIRED)
 
 # find boost
 if(${OS} MATCHES "Windows")
-    set(Boost_DIR "C:/Libs/Boost")
+    set(BOOST_ROOT "C:/Libs/boost/dst")
 endif()
 find_package(Boost REQUIRED COMPONENTS filesystem)
 
