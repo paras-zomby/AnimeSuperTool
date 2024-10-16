@@ -31,8 +31,12 @@ public:
 private:
     AVFormatContext *ifmt_ctx = nullptr;
     AVCodecContext *codec_ctx = nullptr;
-    AVCodec *codec = nullptr;
     AVFrame *inframe = nullptr;
+#if LIBAVUTIL_VERSION_MAJOR < 58  // use different var for low version
+    AVCodec *codec = nullptr;
+#else
+    const AVCodec *codec = nullptr;
+#endif
     struct SwsContext *sws_ctx = nullptr;
     int video_stream_index = -1;
 
