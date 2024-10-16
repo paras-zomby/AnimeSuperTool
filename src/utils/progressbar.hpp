@@ -40,6 +40,7 @@ namespace progresscpp
             auto time_elapsed = std::chrono::duration_cast<std::chrono::milliseconds>(now - start_time).count();
 
             auto time_eta = int(time_elapsed / progress) - time_elapsed;
+            time_eta /= 1000.0;
 
             std::cout << message << " [";
 
@@ -48,10 +49,20 @@ namespace progresscpp
             std::cout << ">";
             for (int i = pos + 1; i < bar_width; ++i)
                 std::cout << incomplete_char;
+            
+            int time_mins = time_eta / 60;
+            time_eta -= time_mins * 60;
+            int time_hours = time_mins / 60;
+            time_mins -= time_hours * 60;
+            int time_days = time_hours / 24;
+            time_hours -= time_days * 24;
 
             std::cout << "] " << int(progress * 100.0) << "% "
                       << float(time_elapsed) / 1000.0 << "s | ETA: "
-                      << float(time_eta) / 1000.0 << "s      \r";
+                      << (time_days > 0 ? std::to_string(time_days) + "d" : "")
+                      << (time_hours > 0 ? std::to_string(time_hours) + "h" : "")
+                      << (time_mins > 0 ? std::to_string(time_mins) + "m" : "")
+                      << float(time_eta) << "s      \r";
             std::cout.flush();
         }
 
