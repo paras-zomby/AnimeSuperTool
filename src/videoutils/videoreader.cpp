@@ -135,6 +135,9 @@ bool VideoReader::read_frame(Frame &frame)
 
     frame.frame_timestamp.pts = inframe->pts;
     frame.frame_timestamp.pkt_dts = inframe->pkt_dts;
+#if LIBAVUTIL_VERSION_MAJOR < 58  // use different var for low version
+    frame.frame_timestamp.duration = inframe->pkt_duration;
+#else
     frame.frame_timestamp.duration = inframe->duration;
     frame.stream_index = video_stream_index;
 

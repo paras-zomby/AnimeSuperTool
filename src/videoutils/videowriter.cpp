@@ -103,19 +103,21 @@ bool VideoWriter::set_params(const VideoReader &reader, const Params& params)
     AVCodecParameters *codecpar = reader.get_video_stream()->codecpar;
     ori_time_base = reader.get_video_stream()->time_base;
     AVRational time_base = ori_time_base;
-    AVRational framerate = codecpar->framerate;
     AVDictionary *opts = nullptr;
     time_base.den *= params.frame_ratio_scale;
-    framerate.num *= params.frame_ratio_scale;
     codec_ctx->time_base = time_base;
     codec_ctx->pix_fmt = params.frame_fmt;
     codec_ctx->width = codecpar->width * params.zoom_scale;
     codec_ctx->height = codecpar->height * params.zoom_scale;
-    codec_ctx->framerate = framerate;
     codec_ctx->bit_rate = codecpar->bit_rate * (
         (params.zoom_scale - 1) * params.imagezoom_bitrate_scale + \
         (params.frame_ratio_scale - 1) * params.framerate_bitrate_scale + 1
     );
+#if LIBAVUTIL_VERSION_MAJOR > 58  // use different var for low version
+    AVRational framerate = codecpar->framerate;
+    framerate.num *= params.frame_ratio_scale;
+    codec_ctx->framerate = framerate;
+#endif
 
     if (av_dict_set(&opts, "rc", "vbr_peak", 0) < 0)
     {
@@ -319,8 +321,11 @@ bool VideoWriter::write_frame(const Frame &frame)
 
         outframe->pts = av_rescale_q(frame.frame_timestamp.pts, ori_time_base, codec_ctx->time_base);
         outframe->pkt_dts = av_rescale_q(frame.frame_timestamp.pkt_dts, ori_time_base, codec_ctx->time_base);
+#if LIBAVUTIL_VERSION_MAJOR < 58  // use different var for low version
+        outframe->pkt_duration = av_rescale_q(frame.frame_timestamp.duration, ori_time_base, codec_ctx->time_base);        
+#else
         outframe->duration = av_rescale_q(frame.frame_timestamp.duration, ori_time_base, codec_ctx->time_base);        
-
+#endif
         // 编码帧
         int retno = avcodec_send_frame(codec_ctx, outframe);
         if (retno < 0)
