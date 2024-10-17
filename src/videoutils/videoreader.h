@@ -25,7 +25,9 @@ public:
     inline std::string get_error_string() const { return error_string.str(); }
     inline const AVStream *const *const get_streams() const { return ifmt_ctx->streams; }
     inline const AVStream *const get_video_stream() const { return ifmt_ctx->streams[video_stream_index]; }
+    inline const AVChapter *const*const get_chapters() const { return ifmt_ctx->chapters; }
     inline int get_stream_nb() const { return ifmt_ctx->nb_streams; }
+    inline int get_chapter_nb() const { return ifmt_ctx->nb_chapters; }
     inline bool is_opened() const { return is_opened_; }
 
 private:

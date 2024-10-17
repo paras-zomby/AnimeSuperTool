@@ -134,7 +134,7 @@ bool VideoWriter::set_params(const VideoReader &reader, const Params& params)
             reset_params();
             return false;
         }
-        if (av_dict_set_int(&opts, "maxrate", 5 * codec_ctx->bit_rate, 0) < 0)
+        if (av_dict_set_int(&opts, "maxrate", 10 * codec_ctx->bit_rate, 0) < 0)
         {
             error_string << "Failed to set codec options" << std::endl;
             av_dict_free(&opts);
@@ -158,7 +158,7 @@ bool VideoWriter::set_params(const VideoReader &reader, const Params& params)
             reset_params();
             return false;
         }
-        if (av_dict_set_int(&opts, "maxrate", 5 * codec_ctx->bit_rate, 0) < 0)
+        if (av_dict_set_int(&opts, "maxrate", 10 * codec_ctx->bit_rate, 0) < 0)
         {
             error_string << "Failed to set codec options" << std::endl;
             av_dict_free(&opts);
@@ -221,8 +221,8 @@ bool VideoWriter::set_params(const VideoReader &reader, const Params& params)
         new_streams[i] = stream;
         streams_mapping[i] = stream->index;
     }
-    av_dict_copy(&ofmt_ctx->metadata, reader.get_video_stream()->metadata, 0);  // copy metadata from reader to writer
-
+    
+    copy_chapters(reader.get_chapters(), &ofmt_ctx->chapters, reader.get_chapter_nb(), codec_ctx->time_base);
     av_dump_format(ofmt_ctx, 0, output_filename.c_str(), 1);
 
     is_set_params = true;
@@ -345,6 +345,26 @@ void VideoWriter::deinit_video()
     is_init_video = false;
 }
 
+int VideoWriter::copy_chapters(const AVChapter *const *const src, AVChapter ***pdst, int nb_chapters, AVRational dsttimebase)
+{
+    AVChapter **tmp = (AVChapter **)av_realloc_f(*pdst, nb_chapters, sizeof(*src));
+     if (!tmp)
+         return AVERROR(ENOMEM);
+  
+     for (int i = 0; i < nb_chapters; ++i) {
+        tmp[i] = (AVChapter*)av_mallocz(sizeof(AVChapter));
+        if (!tmp[i])
+            return AVERROR(ENOMEM);
+        tmp[i]->id = src[i]->id;
+        tmp[i]->time_base = dsttimebase;
+        tmp[i]->start = av_rescale_q(src[i]->start, src[i]->time_base, dsttimebase);
+        tmp[i]->end = av_rescale_q(src[i]->end, src[i]->time_base, dsttimebase);
+        av_dict_copy(&tmp[i]->metadata, src[i]->metadata, 0);
+     }
+     *pdst = tmp;
+     return 0;
+}
+
 bool VideoWriter::write_frame(const Frame &frame)
 {
     if (frame.type == FrameType::FIN)
@@ -399,4 +419,3 @@ bool VideoWriter::write_frame(const Frame &frame)
     }
     return true;
 }
-

@@ -29,6 +29,8 @@ private:
     void close_video_file();
     void reset_params();
     void deinit_video();
+    int copy_chapters(const AVChapter *const *const src, AVChapter ***pdst,
+                      int nb_chapters, AVRational dsttimebase);
 
 private:
     std::string output_filename;
