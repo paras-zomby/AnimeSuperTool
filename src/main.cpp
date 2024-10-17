@@ -101,6 +101,8 @@ bool workflow(const Params &param, const std::string& filename, const std::strin
 
 int main() {
 
+    std::string path = "D:/Animes/[LPSub&LP-Raws] BanG Dream! It's MyGO!!!!! [BD 01-13 Fin][AVC AAC][1080p][JPSC]";
+
     // configs
     Params param;
     param.zoom_scale = 2;
@@ -116,7 +118,7 @@ int main() {
     std::stringstream discription;
     discription << "[AST " << param.zoom_scale << "x@" << param.frame_ratio_scale << "x]";
 
-    boost::filesystem::path video_path("../video_small.mp4");
+    boost::filesystem::path video_path(path);
     if (!boost::filesystem::exists(video_path))
     {
         fprintf(stderr, "Video file not exist: %s\n", video_path.c_str());
@@ -127,7 +129,7 @@ int main() {
         for (boost::filesystem::directory_entry& x : boost::filesystem::directory_iterator(video_path))
         {
             std::string filename = x.path().string();
-            std::string output_filename = x.path().string();
+            std::string output_filename = x.path().string().replace(filename.rfind("\\"), 1, "/");
             output_filename.insert(output_filename.rfind("/") + 1, discription.str());
             if (!workflow(param, filename, output_filename))
             {
