@@ -201,10 +201,13 @@ macro(add_shader SHADER_SRC_DIR)
     endforeach()
 endmacro()
 add_shader(${CMAKE_CURRENT_SOURCE_DIR}/src/ifrnet/shaders)
+add_shader(${CMAKE_CURRENT_SOURCE_DIR}/src/rife/shaders)
 add_shader(${CMAKE_CURRENT_SOURCE_DIR}/src/realcugan/shaders)
 
 add_executable(animetool src/main.cpp
                          src/realcugan/realcugan.cpp
+                         src/rife/rife.cpp
+                         src/rife/warp.cpp
                          src/ifrnet/ifrnet.cpp
                          src/ifrnet/warp.cpp
                          src/videoutils/common.cpp
