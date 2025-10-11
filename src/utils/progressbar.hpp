@@ -4,27 +4,57 @@
 #include <chrono>
 #include <iostream>
 
+/**
+ * @namespace progresscpp
+ * @brief A namespace for the progress bar utility.
+ */
 namespace progresscpp
 {
+    /**
+     * @class ProgressBar
+     * @brief A class to display a progress bar in the console.
+     */
     class ProgressBar
     {
     private:
-        unsigned int ticks = 0;
-        int last_progress = -1;
-        const std::string message;
-        const unsigned int total_ticks;
-        const unsigned int bar_width;
-        const char complete_char = '=';
-        const char incomplete_char = ' ';
-        const std::chrono::steady_clock::time_point start_time = std::chrono::steady_clock::now();
+        unsigned int ticks = 0; ///< The current number of ticks.
+        int last_progress = -1; ///< The last recorded progress percentage.
+        const std::string message; ///< The message to display with the progress bar.
+        const unsigned int total_ticks; ///< The total number of ticks for completion.
+        const unsigned int bar_width; ///< The width of the progress bar.
+        const char complete_char = '='; ///< The character for the completed part of the bar.
+        const char incomplete_char = ' '; ///< The character for the incomplete part of the bar.
+        const std::chrono::steady_clock::time_point start_time = std::chrono::steady_clock::now(); ///< The start time of the progress bar.
 
     public:
+        /**
+         * @brief Construct a new ProgressBar object.
+         * @param message The message to display.
+         * @param total The total number of ticks.
+         * @param width The width of the progress bar.
+         * @param complete The character for the completed part.
+         * @param incomplete The character for the incomplete part.
+         */
         ProgressBar(const std::string &message, unsigned int total, unsigned int width, char complete, char incomplete) : message{message}, total_ticks{total}, bar_width{width}, complete_char{complete}, incomplete_char{incomplete} {}
 
+        /**
+         * @brief Construct a new ProgressBar object with default characters.
+         * @param message The message to display.
+         * @param total The total number of ticks.
+         * @param width The width of the progress bar.
+         */
         ProgressBar(const std::string &message, unsigned int total, unsigned int width) : message{message}, total_ticks{total}, bar_width{width} {}
 
+        /**
+         * @brief Increment the progress ticks.
+         * @return The new number of ticks.
+         */
         unsigned int operator++() { return ++ticks; }
 
+        /**
+         * @brief Display the progress bar in the console.
+         * This function calculates and shows the progress, elapsed time, and estimated time remaining (ETA).
+         */
         void display()
         {
             float progress = (float)ticks / total_ticks;
@@ -77,6 +107,9 @@ namespace progresscpp
             std::cout.flush();
         }
 
+        /**
+         * @brief Mark the progress as complete and display the final state of the bar.
+         */
         void done()
         {
             ticks = total_ticks;

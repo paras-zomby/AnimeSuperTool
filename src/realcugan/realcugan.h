@@ -11,29 +11,101 @@
 #include "layer.h"
 
 class FeatureCache;
+/**
+ * @class RealCUGAN
+ * @brief The RealCUGAN class provides an interface for image super-resolution using the Real-CUGAN model.
+ */
 class RealCUGAN
 {
 public:
+    /**
+     * @brief Construct a new RealCUGAN object.
+     * @param gpuid The GPU device ID to use.
+     * @param model_path_dir The directory path to the Real-CUGAN model files.
+     * @param _tilenum The number of tiles to use for processing.
+     * @param zoom_scale The zoom scale factor.
+     * @param num_threads The number of threads to use for processing.
+     * @param denoise Whether to perform denoising.
+     * @param _syncgap The sync gap value.
+     * @param _tta_mode Whether to use test-time augmentation.
+     */
     RealCUGAN(int gpuid, std::string model_path_dir, int _tilenum, int zoom_scale = 2, 
                 int num_threads = 1, bool denoise = false, int _syncgap = 0, bool _tta_mode = false);
+    /**
+     * @brief Destroy the RealCUGAN object.
+     */
     ~RealCUGAN();
 
+    /**
+     * @brief Load the Real-CUGAN model.
+     * @param parampath The path to the model parameter file.
+     * @param modelpath The path to the model binary file.
+     * @return int 0 on success, -1 on failure.
+     */
     int load(const std::string& parampath, const std::string& modelpath);
 
+    /**
+     * @brief Process an input image to generate a super-resolved output image.
+     * @param inimage The input image.
+     * @param outimage The output super-resolved image.
+     * @return int 0 on success, -1 on failure.
+     */
     int process(const ncnn::Mat& inimage, ncnn::Mat& outimage) const;
 
+    /**
+     * @brief Process an input image on the CPU to generate a super-resolved output image.
+     * @param inimage The input image.
+     * @param outimage The output super-resolved image.
+     * @return int 0 on success, -1 on failure.
+     */
     int process_cpu(const ncnn::Mat& inimage, ncnn::Mat& outimage) const;
 
+    /**
+     * @brief Process an input image using the 'se' variant of the model.
+     * @param inimage The input image.
+     * @param outimage The output super-resolved image.
+     * @return int 0 on success, -1 on failure.
+     */
     int process_se(const ncnn::Mat& inimage, ncnn::Mat& outimage) const;
 
+    /**
+     * @brief Process an input image on the CPU using the 'se' variant of the model.
+     * @param inimage The input image.
+     * @param outimage The output super-resolved image.
+     * @return int 0 on success, -1 on failure.
+     */
     int process_cpu_se(const ncnn::Mat& inimage, ncnn::Mat& outimage) const;
 
+    /**
+     * @brief Process an input image using the 'se_rough' variant of the model.
+     * @param inimage The input image.
+     * @param outimage The output super-resolved image.
+     * @return int 0 on success, -1 on failure.
+     */
     int process_se_rough(const ncnn::Mat& inimage, ncnn::Mat& outimage) const;
 
+    /**
+     * @brief Process an input image on the CPU using the 'se_rough' variant of the model.
+     * @param inimage The input image.
+     * @param outimage The output super-resolved image.
+     * @return int 0 on success, -1 on failure.
+     */
     int process_cpu_se_rough(const ncnn::Mat& inimage, ncnn::Mat& outimage) const;
 
+    /**
+     * @brief Process an input image using the 'se_very_rough' variant of the model.
+     * @param inimage The input image.
+     * @param outimage The output super-resolved image.
+     * @return int 0 on success, -1 on failure.
+     */
     int process_se_very_rough(const ncnn::Mat& inimage, ncnn::Mat& outimage) const;
 
+    /**
+     * @brief Process an input image on the CPU using the 'se_very_rough' variant of the model.
+     * @param inimage The input image.
+     * @param outimage The output super-resolved image.
+     * @return int 0 on success, -1 on failure.
+     */
     int process_cpu_se_very_rough(const ncnn::Mat& inimage, ncnn::Mat& outimage) const;
 
 protected:

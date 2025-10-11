@@ -9,6 +9,15 @@
 #include "realcugan/realcugan.h"
 #include "boost/filesystem.hpp"
 
+/**
+ * @brief The main processing workflow for video enhancement.
+ * This function takes an input video file, applies frame interpolation and super-resolution,
+ * and writes the result to an output file.
+ * @param param The parameters for the processing pipeline.
+ * @param filename The path to the input video file.
+ * @param output_filename The path to the output video file.
+ * @return true if the processing was successful, false otherwise.
+ */
 bool workflow(const Params &param, const std::string& filename, const std::string& output_filename)
 {
     VideoReader videoReader;
@@ -99,6 +108,12 @@ bool workflow(const Params &param, const std::string& filename, const std::strin
     return true;
 }
 
+/**
+ * @brief The main entry point of the application.
+ * This function parses command-line arguments (or uses hardcoded paths for now),
+ * sets up the processing parameters, and initiates the video processing workflow.
+ * @return 0 on successful execution, -1 on failure.
+ */
 int main() {
 
     std::string path = "D:/Animes/[LPSub&LP-Raws] BanG Dream! It's MyGO!!!!! [BD 01-13 Fin][AVC AAC][1080p][JPSC]";
