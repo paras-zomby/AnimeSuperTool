@@ -2,6 +2,7 @@
 reference/
 
 # build output
-build/
+build/**
+!build/.gitkeep
 
 *.mp4
