@@ -49,7 +49,7 @@ RIFE::RIFE(int gpuid, std::string model_path_dir, int scale, bool _tta_mode,
 
     if (scale > 1)
     {
-        load("../models/rife-v4.6");
+        load(model_path_dir);
     }
 }
 

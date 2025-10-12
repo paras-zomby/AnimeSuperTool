@@ -82,6 +82,8 @@
         "typeinfo": "cpp",
         "valarray": "cpp",
         "variant": "cpp",
-        "*.ipp": "cpp"
+        "source_location": "cpp",
+        "shared_mutex": "cpp",
+        "stdfloat": "cpp"
     }
 }

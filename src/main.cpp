@@ -9,13 +9,24 @@
 #include "realcugan/realcugan.h"
 #include "boost/filesystem.hpp"
 
+/**
+ * @brief The main processing workflow for video enhancement.
+ * This function takes an input video file, applies frame interpolation and super-resolution,
+ * and writes the result to an output file.
+ * @param param The parameters for the processing pipeline.
+ * @param filename The path to the input video file.
+ * @param output_filename The path to the output video file.
+ * @return true if the processing was successful, false otherwise.
+ */
 bool workflow(const Params &param, const std::string& filename, const std::string& output_filename)
 {
     VideoReader videoReader;
     VideoWriter videoWriter;
 
-    IFRNet ifrnet(param.gpu, "../models", param.zoom_scale, false, 
-                    param.num_threads_pergpu, param.ifrnet_type, false);
+    // IFRNet ifrnet(param.gpu, "../models", param.frame_ratio_scale, false, 
+    //                 param.num_threads_pergpu, param.ifrnet_type, false);
+    RIFE rife(param.gpu, "../models/rife-v4.6", param.frame_ratio_scale, false, false, false, 
+                    param.num_threads_pergpu, false, true);
     RealCUGAN realcugan(param.gpu, "../models/realcugan-pro", param.tile_num, 
                         param.zoom_scale, param.num_threads_pergpu, 
                         param.denoise, 0, false);
@@ -59,7 +70,7 @@ bool workflow(const Params &param, const std::string& filename, const std::strin
             }
             // Frame Interpolation
             for (size_t i = 1; i < param.frame_ratio_scale; ++i)
-                ifrnet.process(buffer.head().img, buffer.tail().img, i * 1.0 / param.frame_ratio_scale, buffer[i].img);
+                rife.process(buffer.head().img, buffer.tail().img, i * 1.0 / param.frame_ratio_scale, buffer[i].img);
             fix_timestamp(buffer, param.frame_ratio_scale);
             // Frame Upscaling and write to video
             for (size_t i = 0; i < param.frame_ratio_scale; ++i)
@@ -97,7 +108,15 @@ bool workflow(const Params &param, const std::string& filename, const std::strin
     return true;
 }
 
+/**
+ * @brief The main entry point of the application.
+ * This function parses command-line arguments (or uses hardcoded paths for now),
+ * sets up the processing parameters, and initiates the video processing workflow.
+ * @return 0 on successful execution, -1 on failure.
+ */
 int main() {
+
+    std::string path = "D:/Animes/[LPSub&LP-Raws] BanG Dream! It's MyGO!!!!! [BD 01-13 Fin][AVC AAC][1080p][JPSC]";
 
     // configs
     Params param;
@@ -105,16 +124,16 @@ int main() {
     param.frame_ratio_scale = 3;
     param.denoise = false;
     param.num_threads_pergpu = 2;
-    param.tile_num = 1;
-    param.gpu = 1;
+    param.tile_num = 2;
+    param.gpu = 0;
     param.ifrnet_type = 2;
     param.imagezoom_bitrate_scale = 0.7;
     param.framerate_bitrate_scale = 0.5;
 
     std::stringstream discription;
-    discription << "[AST:" << param.zoom_scale << "x" << param.frame_ratio_scale << "x]";
+    discription << "[AST " << param.zoom_scale << "x@" << param.frame_ratio_scale << "x]";
 
-    boost::filesystem::path video_path("../video_small.mp4");
+    boost::filesystem::path video_path(path);
     if (!boost::filesystem::exists(video_path))
     {
         fprintf(stderr, "Video file not exist: %s\n", video_path.c_str());
@@ -125,8 +144,8 @@ int main() {
         for (boost::filesystem::directory_entry& x : boost::filesystem::directory_iterator(video_path))
         {
             std::string filename = x.path().string();
-            std::string output_filename = x.path().string();
-            output_filename.insert(output_filename.rfind("."), discription.str());
+            std::string output_filename = x.path().string().replace(filename.rfind("\\"), 1, "/");
+            output_filename.insert(output_filename.rfind("/") + 1, discription.str());
             if (!workflow(param, filename, output_filename))
             {
                 fprintf(stderr, "Failed to process video file: %s\n", filename.c_str());
@@ -138,7 +157,7 @@ int main() {
     {
         std::string filename = video_path.string();
         std::string output_filename = video_path.string();
-        output_filename.insert(output_filename.rfind("."), discription.str());
+        output_filename.insert(output_filename.rfind("/") + 1, discription.str());
         if (!workflow(param, filename, output_filename))
         {
             fprintf(stderr, "Failed to process video file: %s\n", filename.c_str());
